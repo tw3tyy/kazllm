@@ -1,0 +1,490 @@
+<title>KAZLLM Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=PT+Sans:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: header band, progress strip, then a two-pane explorer (list | detail) that stacks on phones, then reference sections. */
+:root {
+  --bg: #f2f5f7;
+  --surface: #ffffff;
+  --sunk: #e8eef1;
+  --ink: #13222b;
+  --muted: #586a75;
+  --line: #d6dfe4;
+  --sky: #00799a;
+  --sky-soft: #d4eef4;
+  --gold: #9a6b00;
+  --gold-soft: #f6e9c8;
+  --good: #23784a;
+  --good-soft: #d9f0e2;
+  --bad: #b0402c;
+  --bad-soft: #f7ddd7;
+  --font-display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+  --font-body: "PT Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1519; --surface: #142026; --sunk: #0f1a1f; --ink: #e3ebef; --muted: #8ea1ab; --line: #24353d;
+    --sky: #4cc3de; --sky-soft: #123540; --gold: #e2b44a; --gold-soft: #3a2f14;
+    --good: #5fcf8e; --good-soft: #143424; --bad: #f08a74; --bad-soft: #3d1c16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1519; --surface: #142026; --sunk: #0f1a1f; --ink: #e3ebef; --muted: #8ea1ab; --line: #24353d;
+  --sky: #4cc3de; --sky-soft: #123540; --gold: #e2b44a; --gold-soft: #3a2f14;
+  --good: #5fcf8e; --good-soft: #143424; --bad: #f08a74; --bad-soft: #3d1c16;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 0.95rem; }
+.label { font: 600 0.7rem/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--font-mono); font-size: 0.82rem; }
+.num { font-variant-numeric: tabular-nums; }
+a { color: var(--sky); }
+:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+
+/* Header */
+header { background: var(--surface); border-bottom: 1px solid var(--line); }
+header .wrap { padding-block: 28px 22px; display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: flex-end; justify-content: space-between; }
+.brand h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); font-weight: 700; }
+.brand h1 span { color: var(--sky); }
+.brand p { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.pair { font-family: var(--font-body); font-size: 1rem; display: flex; gap: 8px; align-items: baseline; color: var(--muted); }
+.pair b { color: var(--ink); }
+nav.jump { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+nav.jump a { font: 600 0.78rem var(--font-mono); text-decoration: none; color: var(--muted); }
+nav.jump a:hover { color: var(--sky); }
+
+main .wrap { padding-block: 28px 64px; display: grid; gap: 40px; }
+section { display: grid; gap: 14px; min-width: 0; }
+.section-head { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; justify-content: space-between; }
+.section-head p { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: 70ch; }
+
+/* Progress */
+.progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.model-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 8px; }
+.model-card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.model-card .name { font: 600 0.9rem var(--font-mono); }
+.model-card .count { font: 600 1.05rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.model-card .count small { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+.bar { height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--sky); border-radius: 4px; }
+.model-card .meta { color: var(--muted); font-size: 0.85rem; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 600 0.72rem var(--font-mono); padding: 3px 8px; border-radius: 999px; background: var(--sunk); color: var(--muted); border: 1px solid var(--line); }
+.chip.pending { background: var(--gold-soft); color: var(--gold); border-color: transparent; }
+.chip.done { background: var(--good-soft); color: var(--good); border-color: transparent; }
+
+/* Explorer */
+.explorer { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); min-height: 640px; overflow: hidden; }
+.toolbar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); background: var(--sunk); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.seg button { font: 600 0.78rem var(--font-mono); border: 0; background: none; color: var(--muted); padding: 6px 10px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--sky); color: var(--surface); }
+select, input[type="search"] { font: 0.88rem var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
+input[type="search"] { flex: 1 1 160px; min-width: 0; }
+.toggle { display: inline-flex; gap: 6px; align-items: center; font-size: 0.88rem; color: var(--muted); cursor: pointer; }
+
+.list { border-right: 1px solid var(--line); overflow-y: auto; max-height: 760px; min-width: 0; }
+.list-count { padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 2.6em 1fr auto; gap: 8px; align-items: start; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 9px 14px; cursor: pointer; color: var(--ink); font: inherit; }
+.row:hover { background: var(--sunk); }
+.row[aria-current="true"] { background: var(--sky-soft); }
+.row .n { font: 600 0.75rem/1.6 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .t { font-size: 0.88rem; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-width: 0; }
+.row .s { display: flex; gap: 4px; }
+.dot { font: 600 0.68rem/1 var(--font-mono); padding: 3px 5px; border-radius: 4px; background: var(--sunk); color: var(--muted); font-variant-numeric: tabular-nums; }
+.dot.hi { background: var(--good-soft); color: var(--good); }
+.dot.mid { background: var(--gold-soft); color: var(--gold); }
+.dot.lo { background: var(--bad-soft); color: var(--bad); }
+
+.detail { padding: 20px 22px 28px; overflow-y: auto; max-height: 760px; min-width: 0; display: grid; gap: 22px; align-content: start; }
+.detail-head { display: grid; gap: 6px; }
+.detail-head .chips { margin-top: 2px; }
+.cond { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 12px; min-width: 0; }
+.cond-title { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+.cond-title h3 { font-size: 0.9rem; }
+.text-block { display: grid; gap: 4px; min-width: 0; }
+.text-block .body { font-size: 1.02rem; line-height: 1.55; overflow-wrap: anywhere; }
+.text-block .body.response { background: var(--sky-soft); border-radius: var(--radius); padding: 10px 12px; }
+.text-block .body.ref { background: var(--sunk); border-radius: var(--radius); padding: 10px 12px; }
+mark { background: none; color: inherit; border-bottom: 2px solid var(--good); }
+.pending-note { background: var(--gold-soft); color: var(--gold); border-radius: var(--radius); padding: 10px 12px; font-size: 0.92rem; }
+.meter { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.meter .bar { height: 10px; }
+.meter .bar i.hi { background: var(--good); }
+.meter .bar i.mid { background: var(--gold); }
+.meter .bar i.lo { background: var(--bad); }
+.meter b { font: 600 0.95rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.passage { font-size: 0.98rem; line-height: 1.6; overflow-wrap: anywhere; }
+.question { font-weight: 700; }
+.options { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.options li { display: grid; grid-template-columns: 2em 1fr auto; gap: 8px; align-items: start; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 0.95rem; }
+.options li .k { font: 600 0.85rem var(--font-mono); color: var(--muted); }
+.options li.gold { border-color: var(--good); background: var(--good-soft); }
+.options li.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.options li .tag { font: 600 0.68rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+details.record { font-size: 0.85rem; color: var(--muted); }
+details.record summary { cursor: pointer; font: 600 0.75rem var(--font-mono); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px; margin-top: 8px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--font-mono); font-size: 0.78rem; overflow-wrap: anywhere; color: var(--ink); }
+pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; font: 0.8rem/1.5 var(--font-mono); background: var(--sunk); padding: 10px 12px; border-radius: var(--radius); margin: 8px 0 0; color: var(--ink); }
+
+/* Scores */
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.notice { border-left: 3px solid var(--gold); background: var(--gold-soft); color: var(--ink); padding: 10px 14px; font-size: 0.92rem; border-radius: 0 var(--radius) var(--radius) 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { display: grid; gap: 2px; }
+.stat b { font: 600 1.5rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+th { font: 600 0.7rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 0.85rem; }
+svg text { fill: var(--muted); font: 10px var(--font-mono); }
+svg .axis { stroke: var(--line); }
+
+/* Method */
+ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; max-width: 75ch; }
+.hash { font: 0.75rem var(--font-mono); overflow-wrap: anywhere; color: var(--muted); }
+footer { color: var(--muted); font-size: 0.85rem; }
+
+@media (max-width: 760px) {
+  .explorer { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .list { border-right: 0; border-bottom: 1px solid var(--line); max-height: 320px; }
+  .detail { max-height: none; padding: 16px; }
+  .stats { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bar i { transition: width 0.4s ease; }
+}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <h1>KAZ<span>LLM</span></h1>
+      <p>How well do Gemini, Qwen and Gemma handle Kazakh? Translation in both directions, reading comprehension in both languages, and targeted grammar probes on one frozen benchmark.</p>
+    </div>
+    <div style="display:grid;gap:10px;justify-items:start">
+      <div class="pair"><b>Қазақша</b> ⇄ <b>English</b></div>
+      <nav class="jump" aria-label="Sections">
+        <a href="#progress">Progress</a><a href="#explorer">Explorer</a><a href="#scores">Scores</a><a href="#method">Method</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <section id="progress">
+      <div class="section-head">
+        <h2>Run progress</h2>
+        <p id="progress-sub"></p>
+      </div>
+      <div class="progress-grid" id="progress-grid"></div>
+      <div class="chips" id="stage-chips"></div>
+    </section>
+
+    <section id="explorer">
+      <div class="section-head">
+        <h2>Benchmark explorer</h2>
+        <p>Every item with its exact prompt, the saved model response and the single-item check. Underlined words also appear in the reference.</p>
+      </div>
+      <div class="explorer">
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Task">
+            <button type="button" data-task="all" aria-pressed="true">All</button>
+            <button type="button" data-task="mt" aria-pressed="false">Translation</button>
+            <button type="button" data-task="qa" aria-pressed="false">QA</button>
+            <button type="button" data-task="probe" aria-pressed="false">Probes</button>
+          </div>
+          <label class="label" for="model-select">Model</label>
+          <select id="model-select"></select>
+          <input type="search" id="search" placeholder="Search text or item number" aria-label="Search items">
+          <label class="toggle" for="answered"><input type="checkbox" id="answered"> With responses only</label>
+        </div>
+        <div class="list" id="list" aria-label="Items"></div>
+        <div class="detail" id="detail" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="scores">
+      <div class="section-head">
+        <h2>Scores so far</h2>
+        <p>The study table needs complete runs for all three models. Until then the page shows a preliminary translation score and the simple baselines.</p>
+      </div>
+      <div class="two-col">
+        <div class="panel" id="prelim"></div>
+        <div class="panel" id="baselines"></div>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-head">
+        <h2>Method and dataset audit</h2>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <h3>Protocol</h3>
+          <ol class="steps">
+            <li>One frozen dataset: 200 FLORES-200 sentence pairs, 200 Belebele reading questions and 30 grammar probes.</li>
+            <li>Inputs and generated prompts are checked against SHA-256 hashes before every run.</li>
+            <li>Gemini runs through the Google Gemini API. Qwen 2.5 1.5B and Gemma 3 run locally through Ollama.</li>
+            <li>Every response is saved with its prompt hash, settings hash, model version and timestamp. Reference answers never enter the prompt.</li>
+            <li>The scorer computes QA accuracy, corpus chrF2, the translation gap and paired QA tests with Holm correction.</li>
+          </ol>
+        </div>
+        <div class="panel" id="audit"></div>
+      </div>
+    </section>
+
+    <footer>Built from the saved records in <span class="mono">outputs/</span> and <span class="mono">smoke_outputs/</span> by <span class="mono">site/build_site.py</span>. The page makes no model calls.</footer>
+  </div>
+</main>
+
+<script>
+const DATA = /*__KAZLLM_DATA__*/null;
+
+const TASK_NAMES = { mt: "Translation", qa: "Question answering", probe: "Language probe" };
+const COND_NAMES = { en2kk: "English → Kazakh", kk2en: "Kazakh → English", qa_kk: "Question in Kazakh", qa_en: "Question in English" };
+const PROBE_NAMES = { word_order: "Word order", negation: "Negation", possessive: "Possessive", questions: "Questions", tense_aspect: "Tense and aspect", case_marking: "Case marking" };
+const MODEL_LABELS = { "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite", "qwen2.5-1.5b": "Qwen 2.5 1.5B", "gemma3": "Gemma 3" };
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const band = v => v >= 60 ? "hi" : v >= 35 ? "mid" : "lo";
+const pct = v => (v * 100).toFixed(1) + "%";
+const label = m => MODEL_LABELS[m] || m;
+
+const state = { task: "all", model: DATA.models[0], query: "", answered: false, current: 1 };
+
+function qaParts(prompt) {
+  const lines = prompt.split("\n");
+  const options = [];
+  let passage = "", question = "";
+  for (const line of lines) {
+    const opt = line.match(/^([A-D])\.\s?(.*)$/);
+    if (opt) options.push({ k: opt[1], text: opt[2] });
+    else if (line.startsWith("Passage:")) passage = line.slice(8).trim();
+    else if (line.startsWith("Question:")) question = line.slice(9).trim();
+  }
+  return { passage, question, options };
+}
+
+function itemTitle(item) {
+  const p = item.prompts[0];
+  if (item.task === "qa") return qaParts(p.prompt).question || item.id;
+  return p.source;
+}
+
+function wordSet(text) {
+  return new Set((text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []));
+}
+function highlight(text, ref) {
+  const words = wordSet(ref);
+  return esc(text).replace(/[\p{L}\p{N}]+/gu, w => words.has(w.toLowerCase()) ? `<mark>${w}</mark>` : w);
+}
+
+function renderProgress() {
+  const total = DATA.prompts_per_model;
+  $("#progress-sub").textContent = `${DATA.items.length} items, ${total} prompts per model. Smoke-test responses are counted separately and never enter the scores.`;
+  $("#progress-grid").innerHTML = DATA.models.map(m => {
+    const c = DATA.counts[m];
+    const share = c.benchmark / total;
+    return `<div class="model-card">
+      <div class="top"><span class="name">${esc(label(m))}</span><span class="count">${c.benchmark}<small>/${total}</small></span></div>
+      <div class="bar" role="img" aria-label="${c.benchmark} of ${total} responses"><i style="width:${(share * 100).toFixed(1)}%"></i></div>
+      <div class="meta"><span>${pct(share)} of benchmark</span><span>${c.smoke} smoke-test</span></div>
+    </div>`;
+  }).join("");
+  const s = DATA.status;
+  const chip = (name, value) => `<span class="chip ${value === "pending" || value === false ? "pending" : "done"}">${esc(name)}: ${esc(value === false ? "pending" : value === true ? "complete" : value)}</span>`;
+  $("#stage-chips").innerHTML = chip("Model runs", s.llm_runs_complete) + chip("NLLB baseline", s.nllb) + chip("Human annotation", s.annotation);
+}
+
+function matches(item) {
+  if (state.task !== "all" && item.task !== state.task) return false;
+  if (state.answered && !item.prompts.some(p => p.responses[state.model])) return false;
+  const q = state.query.trim().toLowerCase();
+  if (!q) return true;
+  if (/^\d+$/.test(q)) return String(item.n) === q;
+  return item.id.toLowerCase().includes(q) || item.prompts.some(p => (p.prompt + " " + (p.reference || "")).toLowerCase().includes(q));
+}
+
+function rowScore(item) {
+  return item.prompts.map(p => {
+    const r = p.responses[state.model];
+    if (!r) return `<span class="dot" title="${esc(COND_NAMES[p.cond])}: pending">–</span>`;
+    if (item.task === "qa") return `<span class="dot ${r.correct ? "hi" : "lo"}" title="${esc(COND_NAMES[p.cond])}">${r.correct ? "✓" : "✗"}</span>`;
+    return `<span class="dot ${band(r.chrf)}" title="${esc(COND_NAMES[p.cond])} chrF2">${Math.round(r.chrf)}</span>`;
+  }).join("");
+}
+
+function renderList() {
+  const items = DATA.items.filter(matches);
+  const list = $("#list");
+  list.innerHTML = `<div class="list-count label">${items.length} item${items.length === 1 ? "" : "s"}</div>` +
+    items.map(it => `<button type="button" class="row" data-n="${it.n}" aria-current="${it.n === state.current}">
+      <span class="n">${it.n}</span><span class="t">${esc(itemTitle(it))}</span><span class="s">${rowScore(it)}</span></button>`).join("");
+  if (items.length && !items.some(it => it.n === state.current)) select(items[0].n, false);
+}
+
+function recordDetails(p, r) {
+  return `<details class="record"><summary>Response record and prompt</summary>
+    <dl class="kv">
+      <dt>Source folder</dt><dd>${esc(r.folder)}/</dd>
+      <dt>Backend</dt><dd>${esc(r.backend)}</dd>
+      <dt>Timestamp</dt><dd>${esc(r.time)}</dd>
+      <dt>Request time</dt><dd>${r.elapsed != null ? r.elapsed.toFixed(2) + " s" : "–"}</dd>
+      <dt>Response ID</dt><dd>${esc(r.response_id)}</dd>
+    </dl>
+    <pre class="prompt">${esc(p.prompt)}</pre></details>`;
+}
+
+function renderCondition(item, p) {
+  const r = p.responses[state.model];
+  const smoke = r && r.folder === "smoke_outputs" ? ` <span class="chip pending">smoke test</span>` : "";
+  let html = `<div class="cond"><div class="cond-title"><h3>${esc(COND_NAMES[p.cond] || p.cond)}</h3>${smoke}</div>`;
+  if (item.task === "qa") {
+    const parts = qaParts(p.prompt);
+    html += `<div class="passage">${esc(parts.passage)}</div><div class="question">${esc(parts.question)}</div><ul class="options">` +
+      parts.options.map(o => {
+        const isGold = o.k === p.gold, isPick = r && o.k === r.parsed;
+        const cls = isGold ? "gold" : isPick ? "wrong" : "";
+        const tag = [isGold ? "reference" : "", isPick ? "model" : ""].filter(Boolean).join(" · ");
+        return `<li class="${cls}"><span class="k">${o.k}</span><span>${esc(o.text)}</span><span class="tag">${tag}</span></li>`;
+      }).join("") + `</ul>`;
+    html += r ? `<div class="mono">Raw response: ${esc(r.output)} · Parsed: ${esc(r.parsed || "unparsed")} · ${r.correct ? "Correct" : "Incorrect"}</div>`
+              : `<div class="pending-note">Pending. ${esc(label(state.model))} has no saved response for this prompt.</div>`;
+  } else {
+    html += `<div class="text-block"><span class="label">Source</span><div class="body">${esc(p.source)}</div></div>`;
+    if (r) {
+      html += `<div class="text-block"><span class="label">Model response</span><div class="body response">${highlight(r.output, p.reference)}</div></div>`;
+    } else {
+      html += `<div class="pending-note">Pending. ${esc(label(state.model))} has no saved response for this prompt.</div>`;
+    }
+    html += `<div class="text-block"><span class="label">Reference</span><div class="body ref">${esc(p.reference)}</div></div>`;
+    if (r) html += `<div class="meter"><span class="label">chrF2</span><div class="bar"><i class="${band(r.chrf)}" style="width:${r.chrf}%"></i></div><b>${r.chrf.toFixed(1)}</b></div>`;
+  }
+  if (r) html += recordDetails(p, r);
+  return html + `</div>`;
+}
+
+function renderDetail() {
+  const item = DATA.items[state.current - 1];
+  const chips = [`<span class="chip">${esc(TASK_NAMES[item.task])}</span>`];
+  if (item.task === "probe") chips.push(`<span class="chip">${esc(PROBE_NAMES[item.domain] || item.domain)}</span>`);
+  else if (item.domain) chips.push(`<span class="chip">${esc(item.domain)}</span>`);
+  if (DATA.audit.excluded_item_ids.includes(item.id)) chips.push(`<span class="chip pending">overlaps pilot set</span>`);
+  $("#detail").innerHTML = `<div class="detail-head"><span class="label">Item ${item.n} of ${DATA.items.length} · ${esc(item.id)}</span>
+    <h2>${esc(label(state.model))}</h2><div class="chips">${chips.join("")}</div></div>` +
+    item.prompts.map(p => renderCondition(item, p)).join("");
+}
+
+function select(n, scroll = true) {
+  state.current = n;
+  document.querySelectorAll(".row").forEach(b => b.setAttribute("aria-current", String(+b.dataset.n === n)));
+  renderDetail();
+  if (scroll) $("#detail").scrollTop = 0;
+}
+
+function histogram(values) {
+  const bins = new Array(10).fill(0);
+  values.forEach(v => bins[Math.min(9, Math.floor(v / 10))]++);
+  const max = Math.max(...bins, 1), W = 300, H = 110, pad = 22, bw = (W - pad) / 10;
+  const bars = bins.map((c, i) => {
+    const h = (c / max) * (H - 30);
+    return `<rect x="${pad + i * bw + 2}" y="${H - 18 - h}" width="${bw - 4}" height="${h}" rx="2" fill="var(--sky)"><title>chrF2 ${i * 10}–${i * 10 + 10}: ${c} sentences</title></rect>` +
+      (c ? `<text x="${pad + i * bw + bw / 2}" y="${H - 22 - h}" text-anchor="middle">${c}</text>` : "");
+  }).join("");
+  const ticks = [0, 50, 100].map(t => `<text x="${pad + (t / 100) * (W - pad)}" y="${H - 4}" text-anchor="middle">${t}</text>`).join("");
+  return `<svg viewBox="0 0 ${W + 14} ${H}" width="100%" role="img" aria-label="Distribution of sentence chrF2"><line class="axis" x1="${pad}" x2="${W}" y1="${H - 18}" y2="${H - 18}"/>${bars}${ticks}</svg>`;
+}
+
+function renderScores() {
+  const entries = Object.entries(DATA.preliminary);
+  const prelim = $("#prelim");
+  if (!entries.length) {
+    prelim.innerHTML = `<h3>Preliminary translation score</h3><p>No model has benchmark translations in both directions yet.</p>`;
+  } else {
+    prelim.innerHTML = `<h3>Preliminary translation score</h3>` + entries.map(([m, s]) => {
+      const vals = d => DATA.items.flatMap(it => it.task === "mt" ? it.prompts.filter(p => p.cond === d && p.responses[m]?.folder === "outputs").map(p => p.responses[m].chrf) : []);
+      return `<div class="notice">Partial run: ${s.pairs} of ${s.of} translation pairs for ${esc(label(m))}. This is not the study result and will change as the run completes.</div>
+        <div class="stats">
+          <div class="stat"><span class="label">EN → KK</span><b>${s.en2kk.toFixed(1)}</b></div>
+          <div class="stat"><span class="label">KK → EN</span><b>${s.kk2en.toFixed(1)}</b></div>
+          <div class="stat"><span class="label">Gap</span><b>${s.gap > 0 ? "+" : ""}${s.gap.toFixed(1)}</b></div>
+        </div>
+        <p class="mono" style="margin:0;color:var(--muted)">Corpus chrF2, 0–100. Gap = into Kazakh minus into English.</p>
+        <div class="two-col" style="gap:8px">
+          <div><span class="label">Sentence chrF2, EN → KK</span>${histogram(vals("en2kk"))}</div>
+          <div><span class="label">Sentence chrF2, KK → EN</span>${histogram(vals("kk2en"))}</div>
+        </div>`;
+    }).join("");
+  }
+  const b = DATA.baselines;
+  $("#baselines").innerHTML = `<h3>Simple baselines</h3>
+    <p style="margin:0;color:var(--muted);font-size:0.92rem">Any model has to beat these to show real ability. QA has four options, so chance is 25%.</p>
+    <div class="table-wrap"><table><thead><tr><th>Baseline</th><th class="r">QA KK</th><th class="r">QA EN</th><th class="r">Pairs</th></tr></thead><tbody>
+    ${b.qa.map(r => `<tr><td>${esc(r.label)}</td><td class="r">${pct(r.kk)}</td><td class="r">${pct(r.en)}</td><td class="r">${r.n}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="table-wrap"><table><thead><tr><th>Baseline</th><th class="r">EN → KK</th><th class="r">KK → EN</th><th class="r">Sentences</th></tr></thead><tbody>
+    <tr><td>Dictionary MT, chrF2</td><td class="r">${b.dictionary_mt.en2kk.toFixed(2)}</td><td class="r">${b.dictionary_mt.kk2en.toFixed(2)}</td><td class="r">${b.mt_n}</td></tr>
+    </tbody></table></div>`;
+}
+
+function renderAudit() {
+  const a = DATA.audit;
+  const t = a.overlap_tasks, r = a.retained_tasks;
+  $("#audit").innerHTML = `<h3>Pilot overlap</h3>
+    <p style="margin:0">${a.overlap_items} of ${a.test_items} benchmark items also appear in the ${a.pilot_items}-item pilot set. The sensitivity analysis drops them.</p>
+    <div class="table-wrap"><table><thead><tr><th>Task</th><th class="r">Benchmark</th><th class="r">Overlap</th><th class="r">Retained</th></tr></thead><tbody>
+    ${["mt", "qa", "probe"].map(k => `<tr><td>${TASK_NAMES[k]}</td><td class="r">${a.test_tasks[k] || 0}</td><td class="r">${t[k] || 0}</td><td class="r">${r[k] || 0}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div><span class="label">Probe categories</span><div class="chips" style="margin-top:6px">${Object.values(PROBE_NAMES).map(n => `<span class="chip">${n}</span>`).join("")}</div></div>
+    <div><span class="label">Benchmark SHA-256</span><div class="hash">${esc(a.test_sha256)}</div></div>`;
+}
+
+function init() {
+  const sel = $("#model-select");
+  sel.innerHTML = DATA.models.map(m => `<option value="${esc(m)}">${esc(label(m))}</option>`).join("");
+  sel.addEventListener("change", () => { state.model = sel.value; renderList(); renderDetail(); });
+  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+    state.task = b.dataset.task;
+    document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    renderList();
+  }));
+  $("#search").addEventListener("input", e => { state.query = e.target.value; renderList(); });
+  $("#answered").addEventListener("change", e => { state.answered = e.target.checked; renderList(); });
+  $("#list").addEventListener("click", e => { const b = e.target.closest(".row"); if (b) select(+b.dataset.n); });
+  $("#list").addEventListener("keydown", e => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const rows = [...document.querySelectorAll(".row")];
+    const i = rows.findIndex(b => +b.dataset.n === state.current);
+    const next = rows[i + (e.key === "ArrowDown" ? 1 : -1)];
+    if (next) { e.preventDefault(); select(+next.dataset.n); next.focus(); }
+  });
+  const m = location.hash.match(/^#item-(\d+)$/);
+  if (m && +m[1] >= 1 && +m[1] <= DATA.items.length) state.current = +m[1];
+  renderProgress();
+  renderList();
+  renderDetail();
+  renderScores();
+  renderAudit();
+  if (m) $("#explorer").scrollIntoView();
+}
+init();
+</script>

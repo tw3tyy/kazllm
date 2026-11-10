@@ -1,195 +1,129 @@
-# Gemini Free tier + две локальные модели
+# KAZLLM: Kazakh–English Model Evaluation
 
-Этот архив заменяет предыдущие варианты. В конфигурации:
+KAZLLM evaluates Gemini, Qwen, and Gemma on Kazakh–English translation, multiple-choice question answering, and targeted language probes. Gemini runs through the Google Gemini API. Qwen and Gemma run locally through Ollama.
 
-- Gemini 3.5 Flash-Lite — напрямую через Google Gemini API, 830 запросов.
-- Qwen 2.5 1.5B — локально через Ollama, 830 запросов.
-- Gemma 3 (установленный тег gemma3:latest) — локально, 830 запросов.
+## Benchmark
 
-Не выдавайте эти результаты за GPT-4o, Gemini 1.5 Pro или Llama 70B. Состав моделей
-и способ запуска изменены; пояснение для отчёта — REPORT_CHANGE_NOTE.md.
+| Task | Items | Prompts per model |
+|---|---:|---:|
+| Translation in both directions | 200 | 400 |
+| Question answering in both languages | 200 | 400 |
+| Language probes | 30 | 30 |
+| **Total** | **430** | **830** |
 
-## Сначала проверьте бесплатный проект Google
+Each saved response includes the prompt ID, model version, timestamp, and original model response. Reference answers are stored separately from model prompts.
 
-1. Откройте https://aistudio.google.com/apikey и создайте/выберите проект.
-2. Убедитесь, что именно этот проект отмечен **Free tier**, и к нему не подключён
-   Cloud Billing. Не включайте платный тариф ради увеличения квоты.
-3. Проверьте квоту в https://aistudio.google.com/rate-limit для указанной модели.
-4. Ключ храните у себя. Не присылайте его в чат, не вставляйте в файлы проекта.
+### Repository status
 
-Ключ сам по себе НЕ подтверждает бесплатность. Стандартный Gemini API не сообщает
-скрипту надёжно, подключён ли billing: проверка через AI Studio обязательна.
-Параметр `--free-tier-confirmed` — ваше подтверждение этой проверки, а не
-техническая гарантия нулевой стоимости для произвольного проекта.
-На платном проекте этот же запрос может тарифицироваться.
+This snapshot contains **276 of 830 benchmark responses** and **three smoke-test responses** for Gemini 3.5 Flash-Lite. The Qwen and Gemma benchmark runs, NLLB baseline, and human annotation are pending. The final comparison requires complete model runs. Smoke-test responses are stored separately.
 
-Настроена модель, для которой Google публикует Free tier. Доступность и квоты
-зависят от проекта/региона и могут меняться. Скрипт получает описание точной модели; это не подтверждает разрешение
-на генерацию для проекта, тариф или достаточность квоты на 830 запросов. Если модель недоступна,
-скрипт останавливается; другую модель или платный сервис не подставляет.
-
-Gemini получает тексты заданий через интернет. На бесплатном уровне данные могут
-использоваться Google для улучшения продуктов согласно условиям сервиса.
-
-## Установка Python-зависимостей
-
-Откройте Terminal в распакованной папке `kazllm_gemini_free`:
+## Setup
 
 ```sh
+git clone https://github.com/tw3tyy/kazakhllm.git
+cd kazakhllm
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements.txt
-./run_gemini.sh --check
-./run_local.sh --check
 ```
 
-Обе проверки `--check` работают без сети и ключа. Дополнительный SDK Google не нужен.
+Ollama is required for local inference. The demo can display saved responses and calculate simple baselines offline.
 
-## Запуск Gemini
+## Demonstration
 
-Сначала можно проверить ключ и доступ к модели без генерации:
+```sh
+./demo.sh
+```
+
+Enter a menu number and press **Enter**. The menu shows run progress, saved examples, individual benchmark items, results, and the experimental method.
+
+| Command | Output |
+|---|---|
+| `./demo.sh --status` | Saved response counts for each model |
+| `./demo.sh --examples --task mt` | A saved translation example |
+| `./demo.sh --examples --task qa` | A saved multiple-choice QA example |
+| `./demo.sh --examples --task probe` | A saved language probe |
+| `./demo.sh --item 5 --model 1` | Item 5 and Gemini’s saved translations in both directions |
+| `./demo.sh --results` | Completed results or baseline scores with run progress |
+| `./demo.sh --method` | Experimental method and dataset audit |
+
+Model numbers are `1` for Gemini, `2` for Qwen, and `3` for Gemma. Each saved example shows the prompt, model response, reference, single-item score, and response record.
+
+## Run the experiment
+
+### Gemini
+
+Use a Google AI Studio project on the **Free tier with billing disabled**. Check the model’s quota in AI Studio before starting. The script prompts for the API key with hidden input.
 
 ```sh
 ./run_gemini.sh --check-api
-```
-
-Ключ будет запрошен скрыто в Terminal. Он не отображается и не сохраняется в
-проекте. При следующем запуске его нужно ввести снова, если переменная окружения
-GEMINI_API_KEY не настроена отдельно. `--check-api` не проверяет тариф и не измеряет
-оставшуюся квоту; это получение метаданных, не проверка генерации и не гарантия бесплатности.
-
-После проверки Free tier и отсутствия billing — три пробных запроса:
-
-```sh
 ./run_gemini.sh --smoke --free-tier-confirmed
-```
-
-Они сохраняются отдельно в smoke_outputs/ и не попадают в исследовательскую таблицу.
-При успешной проверке — полный запуск:
-
-```sh
 ./run_gemini.sh --free-tier-confirmed
 ```
 
-Между запросами минимум 7 секунд: это настройка осторожного темпа, не обещание
-соответствия вашей квоте. Только паузы на 830 запросах займут около 97 минут,
-плюс время генерации. Бесплатной дневной квоты может не хватить; весь запуск может
-потребовать нескольких дней. Обещать завершение к дедлайну без проверки квоты нельзя.
+The first command retrieves model metadata. The smoke test makes three requests on a fresh setup. The final command collects benchmark responses and resumes from the saved files when run again. If the project reaches its quota, the runner stops and preserves completed responses.
 
-При HTTP 429 скрипт сразу остановится. Он не повторяет запросы после HTTP 429,
-не меняет модель и не подключает оплату. После восстановления квоты повторите
-ту же команду — сохранённые ответы будут пропущены. При сбросе соединения скрипт повторяет текущий запрос через 8 и 16 секунд.
-Если обрыв повторится, запуск остановится с сохранением прогресса. Повтор может
-учитываться в квоте, если Google успел обработать исходный запрос. Не удаляйте outputs/.
+For one fresh request during a demonstration, run the following after any active benchmark run has stopped:
 
-При изменении фактической версии Gemini посередине эксперимента скрипт остановится,
-чтобы не смешивать версии в одном результате. Настройки и prompts не меняйте на ходу.
+```sh
+./demo.sh --live-gemini 201 --free-tier-confirmed
+```
 
-## Две локальные модели
+The live response is stored separately in `demo_outputs/`.
 
-Установленная Ollama используется без ключей и оплаты за запросы.
-На проверенном ноутбуке: MacBook Air M2, 8 ГБ RAM; Gemma уже есть на диске.
-Для Qwen 1.5B нужна загрузка около 986 МБ. Llama больше не нужна.
+### Qwen and Gemma
 
-В первом окне Terminal из папки проекта:
+Start the local Ollama server in one terminal:
 
 ```sh
 ./start_ollama_local.sh
 ```
 
-Оставьте это окно открытым. Если Ollama уже работает через приложение и порт
-занят, завершите приложение, затем повторите. Этот скрипт отключает облачные функции
-Ollama и ограничивает число одновременно загруженных моделей до одной.
-
-Во втором окне Terminal, из той же папки, после активации .venv:
+In another terminal, from the project directory:
 
 ```sh
 ./prepare_local.sh
-./run_local.sh --check-models
-./run_local.sh --smoke
 ./run_local.sh
 ```
 
-Скрипт подготовки скачивает только отсутствующие локальные модели. Уже установленный
-тег не обновляет. Можно запускать одну модель: `./run_local.sh --model gemma3`.
-Длительность зависит от длины ответов, памяти и нагрузки; точного срока не обещаем.
-`run_real.sh` сохранён как совместимый запуск только двух локальных моделей.
+The preparation script downloads the configured local model weights. The runner evaluates Qwen 2.5 1.5B and Gemma 3 sequentially.
 
-## Результаты и разметка
+## Score the responses
 
-После завершения Gemini и двух локальных моделей:
+After all three models reach 830 saved benchmark responses, run:
 
 ```sh
-python3 reproduce_all.py
+./reproduce.sh
+./demo.sh --results
 ```
 
-Без полного набора реальных ответов итоговый подсчёт останавливается.
-Основные файлы results/: main_results_table.md, scores.json, holm.json,
-sensitivity_without_pilot.json, runtime.json, errors.json, run_info.json.
-В runtime указаны backend и фактические возвращённые названия моделей.
-Время отдельных запросов не включает 7-секундные паузы; для общего интервала есть
-first_request_at / last_response_at. При продолжении он может включать несколько дней.
+- **QA accuracy** is the share of model answers that match the reference option.
+- **chrF2** measures character overlap between a translation and its reference.
+- **Translation gap** is chrF2 for translation into Kazakh minus chrF2 for translation into English.
+- **Paired QA comparisons** compare answers to the same items across languages. The scorer applies a Holm correction across the three model comparisons.
 
-Gemini outputs содержат оригинальный responseId, modelVersion, usageMetadata,
-сырые ответы, хеши prompts и параметров, время. Локальные outputs содержат хеши
-весов/шаблона и версию Ollama; их response_id — локальная контрольная сумма.
-Никакие локальные метки не являются криптографическим доказательством происхождения.
-Старые симулированные ответы не принимаются. Неполные/пустые/обрезанные ответы
-останавливают запуск вместо подмены. Это может потребовать отдельного решения
-по обработке блокировок и отклонения от первоначального протокола; замены не скрываются.
+The main table is written to `results/main_results_table.md`. Detailed scores, corrected comparisons, and the sensitivity analysis are saved as JSON in `results/`.
 
-NLLB остаётся отдельным локальным переводчиком, без QA. До запуска — pending:
+## Pilot overlap and limitations
 
-```sh
-python3 -m pip install -r requirements-nllb.txt
-python3 run_nllb.py
-python3 reproduce_all.py
-```
+The pilot set overlaps with the benchmark on **70 items**: 20 translation pairs, 20 QA pairs, and all 30 probes. The sensitivity analysis excludes those items and retains 180 translation pairs and 180 QA pairs. The remaining set contains zero probes.
 
-Разметка: annotation/HOW_TO_ANNOTATE.md. Пока её нет, errors.json содержит pending.
-Скрипт не генерирует экспертные оценки и kappa.
-Только локальные baseline: `python3 reproduce_all.py --baselines-only`.
-Отчёт DOCX не изменён; обновите Setup, имена моделей и результаты после запусков.
+NLLB is a separate translation baseline. Human error annotation is a separate stage described in [the annotation guide](annotation/HOW_TO_ANNOTATE.md). Protocol changes are documented in [DEVIATIONS.md](DEVIATIONS.md).
 
-## Данные и проверки
+## Project files
 
-Унаследованы 430 заданий, 830 prompts/model. Все 70 pilot-заданий есть в test:
-20 MT, 20 QA, все 30 probes. Sensitivity исключает их: 180 MT и 180 QA,
-независимых probes не остаётся. Хеш benchmark:
-9ca2a593b80e8c270a73745bd3963147dda619e073841a78d170608be6c4d910.
-Хеш подтверждает сохранность, но не происхождение/лицензию датасетов или protocol freeze.
+| Path | Contents |
+|---|---|
+| `data/` | Benchmark, input hashes, and overlap audit |
+| `pilot/` | Pilot dataset |
+| `outputs/` | Saved benchmark responses |
+| `smoke_outputs/` | Saved smoke-test responses |
+| `results/` | Run status and scoring outputs |
+| `kazllm/` | Prompt construction, model adapters, and scoring |
+| `tests/` | Automated checks |
+
+Run the automated checks with:
 
 ```sh
 python3 -m unittest discover -s tests -v
 ```
-
-Тесты используют подставные ответы во временных каталогах. Статус живых запусков
-смотрите в CHECKS.md. Для Gemini ключ пока не предоставлен, реальные вызовы не выполнены.
-
-Официальные источники:
-https://ai.google.dev/gemini-api/docs/pricing.md
-https://ai.google.dev/gemini-api/docs/api-key
-https://ai.google.dev/gemini-api/docs/rate-limits
-https://ai.google.dev/api/generate-content
-https://docs.ollama.com/api/chat
-
-## Исправление 404 после успешного --check-api
-
-Google описывает ограничение Gemini 2.5 для новых проектов: metadata GET может
-работать, хотя generateContent возвращает 404. В этой поставке модель явно
-изменена на gemini-3.5-flash-lite. Её Standard Free tier опубликован Google.
-Thinking: MINIMAL, бюджеты 512 QA / 2048 MT включают возможные thinking tokens.
-Изменение протокола отражено в DEVIATIONS.md. Сам проект и генерацию новой модели
-нужно проверить коротким запуском с вашим ключом; тариф автоматически не меняется.
-Источники: https://ai.google.dev/gemini-api/docs/pricing.md#gemini-3.5-flash-lite
-https://discuss.ai.google.dev/t/gemini-2-5-flash-lite-counttokens-returns-404-while-models-get-and-another-model-s-counttokens-succeed/188394/2
-
-## Показ преподавателю
-
-Запустите `./demo.sh` для английского меню. Введите номер и нажмите Enter.
-Прямые команды: `--status`, `--examples`, `--item 201 --model 1`, `--results`, `--method`.
-Полный подсчёт запускается командой `./reproduce.sh`.
-Пошаговый сценарий подготовки и защиты: DEMO_GUIDE_RU.md.
-Новый одиночный запрос для показа: `./demo.sh --live-gemini 201 --free-tier-confirmed`.
-Он требует Free tier без billing, ввод ключа скрыт; запись идёт отдельно в demo_outputs/.
-Не запускайте live-показ одновременно с полным запуском. Меню просмотра можно.

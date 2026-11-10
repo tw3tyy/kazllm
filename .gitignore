@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+.env
+.pipeline.lock
+.DS_Store
+*.pyc
+.env.*
+annotation/*PRIVATE*

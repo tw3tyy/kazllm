@@ -1,0 +1,31 @@
+{
+  "backend": "gemini_and_ollama",
+  "models": [
+    {
+      "name": "gemini-3.5-flash-lite",
+      "id": "gemini-3.5-flash-lite",
+      "backend": "gemini",
+      "qa_max_tokens": 512,
+      "mt_max_tokens": 2048
+    },
+    {
+      "name": "qwen2.5-1.5b",
+      "id": "qwen2.5:1.5b",
+      "qa_max_tokens": 64,
+      "mt_max_tokens": 1024,
+      "backend": "ollama_local"
+    },
+    {
+      "name": "gemma3",
+      "id": "gemma3:latest",
+      "qa_max_tokens": 64,
+      "mt_max_tokens": 1024,
+      "backend": "ollama_local"
+    }
+  ],
+  "temperature": 0,
+  "num_ctx": 8192,
+  "bootstrap_samples": 1000,
+  "seed": 42,
+  "gemini_min_interval_seconds": 7
+}

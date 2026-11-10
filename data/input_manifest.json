@@ -1,0 +1,8 @@
+{
+  "sha256": {
+    "data/benchmark.jsonl": "9ca2a593b80e8c270a73745bd3963147dda619e073841a78d170608be6c4d910",
+    "pilot/benchmark.jsonl": "cd85a41150a77dbb577e24d531eb999e12ef866f3795a92aa5979b8fd1bd969a"
+  },
+  "generated_prompts_sha256": "e14029658191a276767d0e2563a916973ce427db0341b4d41d65b03522b968e2",
+  "provenance_note": "Inherited dataset files from kazllm_pipeline 3; hashes verify integrity, not dataset authenticity or licensing."
+}

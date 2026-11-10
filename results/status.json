@@ -1,0 +1,11 @@
+{
+  "llm_runs_complete": false,
+  "saved_benchmark_responses": {
+    "gemini-3.5-flash-lite": 276,
+    "qwen2.5-1.5b": 0,
+    "gemma3": 0
+  },
+  "prompts_per_model": 830,
+  "nllb": "pending",
+  "annotation": "pending"
+}

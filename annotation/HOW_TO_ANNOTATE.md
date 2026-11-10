@@ -1,21 +1,34 @@
-# Ручная разметка
+# Human Error Annotation
 
-После реальных запусков выполните `python3 reproduce_all.py`.
-Скопируйте `sheet_blank.csv` в `final_consensus.csv`.
-Для каждой строки заполните morph, syntax, lexical, semantic целыми неотрицательными
-числами — количеством ошибок соответствующего типа. Ноль ставьте явно; пустая ячейка
-означает «не размечено». Не меняйте blind_id, исходный текст, эталон или ответ модели.
+## Prepare the annotation sheet
 
-- morph: ошибки аффиксов, падежей, числа, принадлежности, гармонии гласных.
-- syntax: ошибки синтаксиса и согласования.
-- lexical: неверное слово или неуместное заимствование.
-- semantic: пропуск, добавление или искажение смысла.
+After completing the model runs, run the scoring script from the project directory:
 
-Файл key_PRIVATE.csv содержит раскрытие моделей и назначение double=1. Не показывайте
-его аннотаторам до независимой разметки. Для double=1 два аннотатора должны сначала
-независимо заполнить отдельные копии, затем согласовать final_consensus.csv.
-Храните исходные независимые файлы. Эта версия автоматически считает статистику
-консенсуса; kappa остаётся pending до отдельной проверки независимых файлов.
+```sh
+python3 reproduce_all.py
+```
 
-Повторите `python3 reproduce_all.py` после заполнения. Код не создаёт экспертные
-оценки сам и не считает пустые ячейки безошибочными переводами.
+Copy `annotation/sheet_blank.csv` to `annotation/final_consensus.csv`. For each row, enter a non-negative integer in each error column. Enter `0` explicitly when there are no errors of that type. A blank cell means the row is still unannotated. Keep the `blind_id`, source text, reference translation, and model output intact.
+
+| Column | What to count |
+|---|---|
+| `morph` | Errors in affixes, case, grammatical number, possession, or vowel harmony. |
+| `syntax` | Errors in sentence structure or grammatical agreement. |
+| `lexical` | Incorrect word choices or inappropriate borrowings. |
+| `semantic` | Omissions, additions, or distortions of meaning. |
+
+## Annotate independently and resolve disagreements
+
+`key_PRIVATE.csv` maps anonymous IDs to models and identifies rows marked `double=1`. Keep this file private until independent annotation is complete.
+
+Two annotators should label each row marked `double=1` independently in separate copies. They should then review disagreements and record the agreed counts in `final_consensus.csv`. Retain both independent copies for the agreement analysis.
+
+## Calculate annotation statistics
+
+After completing `final_consensus.csv`, run:
+
+```sh
+python3 reproduce_all.py
+```
+
+The script calculates statistics from the human consensus annotations. It treats blank cells as unannotated. The kappa statistic remains pending until the independent annotations are checked separately.

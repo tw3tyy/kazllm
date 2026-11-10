@@ -46,10 +46,11 @@ def main():
     save_json(result_dir / "data_audit.json", audit)
     save_json(result_dir / "run_info.json", {"versions": score.versions(), "metrics": metrics.signatures(),
               "config": config, "generated_at": query.now(), "test_sha256": audit["test_sha256"]})
-    all_rows, pending, runtime = {}, [], {}
+    all_rows, pending, runtime, saved = {}, [], {}, {}
     if not args.baselines_only:
         for spec in config["models"]:
             rows = query.read_validated(ROOT / "outputs" / (spec["name"] + ".jsonl"), ps, spec)
+            saved[spec["name"]] = len(rows)
             if len(rows) != len(ps):
                 pending.append(f"{spec['name']}: {len(rows)}/{len(ps)} responses")
             else:
@@ -63,9 +64,10 @@ def main():
                     "note": "Request elapsed sum; local loading included, inter-request quota pauses excluded. Resumed runs may span sessions."}
     else:
         pending = [s["name"] for s in config["models"]]
-    save_json(result_dir / "status.json", {"llm_runs_complete": not pending, "pending": pending,
-              "nllb": "not yet validated in this scoring invocation", "annotation": "see errors.json"})
     if pending and not args.baselines_only:
+        # Same schema as the committed status, so an incomplete scoring attempt leaves it unchanged.
+        save_json(result_dir / "status.json", {"llm_runs_complete": False, "saved_benchmark_responses": saved,
+                  "prompts_per_model": len(ps), "nllb": "pending", "annotation": "pending"})
         # Remove stale public tables rather than leaving an earlier table visible.
         for name in ("main_results_table.md", "main_results_table.csv", "holm.json", "sensitivity_without_pilot.json"):
             (result_dir / name).unlink(missing_ok=True)
@@ -144,7 +146,8 @@ def main():
     note += "Full CIs, BLEU, counts and probe exact-match scores: scores.json.\n\n"
     (result_dir / "main_results_table.md").write_text(note + frame.to_markdown(index=False), encoding="utf-8")
     save_json(result_dir / "errors.json", errors)
-    save_json(result_dir / "status.json", {"llm_runs_complete": not pending, "pending": pending,
+    save_json(result_dir / "status.json", {"llm_runs_complete": not pending, "saved_benchmark_responses": saved,
+              "prompts_per_model": len(ps), "pending": pending,
               "nllb": "scored" if baseline is not None else "pending",
               "annotation": "pending" if errors.get("status") == "pending" else "consensus scored; kappa pending"})
     print("Saved results/. Human annotation and optional NLLB may still be pending.")

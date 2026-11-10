@@ -1,26 +1,27 @@
-# KAZLLM · показ проекта на защите
+# KAZLLM Project Demo
 
-Открой Terminal в папке проекта и запусти меню.
+## Open the demo
+
+Open Terminal in the project directory and run:
 
 ```sh
-cd "/path/to/kazllm-github"
 ./demo.sh
 ```
 
-Если открыта старая версия меню, закрой её через Ctrl+C в её окне и запусти
-команду заново. Если в отдельном окне идёт сбор ответов, открой меню в новом окне.
-Введи номер пункта и нажми Enter. После просмотра нажми Enter для возврата или сразу введи номер следующего пункта.
+Enter a menu number and press **Enter**. After viewing a screen, press **Enter** to return to the menu, or enter the next menu number directly. If a benchmark run is active, open the demo in a separate Terminal window.
 
-| Пункт | Английская надпись | Что появляется |
+| Option | Menu label | What it shows |
 |---|---|---|
-| 1 | Run progress | Число сохранённых ответов из 830 для каждой модели. Пробные ответы посчитаны отдельно. |
-| 2 | Saved examples | Автоматически выбранные сохранённые примеры перевода, QA и probe. |
-| 3 | Inspect an item | Задание по номеру и сохранённые ответы выбранной модели. Для ожидающих ответов выводятся текст запроса и статус Pending. |
-| 4 | Results and baselines | Готовая таблица или статус Pending и пересчитанные локальные baseline. |
-| 5 | Method and dataset audit | Устройство эксперимента, хеш набора и пересечение pilot/test. |
-| 0 | Exit | Выход. |
+| `1` | Run progress | The number of saved responses out of 830 for each model. Smoke-test responses are counted separately. |
+| `2` | Saved examples | Saved examples of translation, question answering, and a language probe. |
+| `3` | Inspect an item | The prompt and saved responses for a selected benchmark item and model. If a response is pending, the screen displays the prompt and its status. |
+| `4` | Results and baselines | The completed results table when available. While model runs are pending, the screen shows progress and calculates simple baselines. |
+| `5` | Method and dataset audit | The experiment setup, benchmark checksum, and overlap between the pilot and test sets. |
+| `0` | Exit | Closes the demo. |
 
-## Команды без меню
+## Run individual views
+
+These commands open a specific view directly:
 
 ```sh
 ./demo.sh --status
@@ -32,79 +33,65 @@ cd "/path/to/kazllm-github"
 ./demo.sh --method
 ```
 
-Модель 1 означает Gemini, 2 означает Qwen, 3 означает Gemma. Номер задания
-можно выбрать от 1 до 430. Позиция 1 содержит перевод, 201 содержит QA,
-401 содержит языковой probe. Для произвольного номера меню показывает
-языковые условия этого задания.
+Model `1` is **Gemini**, model `2` is **Qwen**, and model `3` is **Gemma**. Item numbers range from `1` to `430`. Item `1` is a translation pair, item `201` is a question-answering pair, and item `401` is a language probe.
 
-На экране примера сначала идёт PROMPT, затем SAVED RESPONSE. Для QA выводится
-сравнение буквы с эталоном. Для перевода выводятся эталон и chrF2 отдельного
-предложения. В RESPONSE RECORD видны точная модель, время, ID ответа и папка
-лога. outputs/ хранит ответы эксперимента. smoke_outputs/ хранит пробные ответы.
+The **PROMPT** section shows what was sent to the model. **SAVED RESPONSE** shows its recorded answer. **SINGLE-ITEM CHECK** compares the selected answer with its reference. For QA, the check compares the selected option with the correct option. For translation, it shows the reference translation and sentence-level chrF2.
 
-## Новый запрос на защите
+**RESPONSE RECORD** shows the model version, timestamp, response ID, and source folder. The `outputs/` directory contains benchmark responses. The `smoke_outputs/` directory contains smoke-test responses.
 
-Когда другие запуски в этой папке закончились и проект Google остаётся на Free tier
-с отключённым billing, выполни команду ниже. Ввод ключа скрыт.
+## Send one live request
+
+Wait for any active run in the project directory to finish. With a Google AI Studio project on the Free tier and billing disabled, run:
 
 ```sh
 ./demo.sh --live-gemini 201 --free-tier-confirmed
 ```
 
-Команда делает один новый запрос для первой языковой версии задания 201.
-Ответ сохраняется в demo_outputs/. Эта папка отделена от данных для подсчёта.
+Enter the API key when the hidden prompt appears. The command sends one new Gemini request for the first language condition of item `201`. The response is stored in `demo_outputs/`, separately from the benchmark responses used for scoring.
 
-## Подготовка полной таблицы до защиты
+## Prepare the full results table
 
-Для Gemini повтори команду сбора. Скрипт продолжит со следующего задания после
-последнего сохранённого ответа.
+To collect or resume Gemini responses, run:
 
 ```sh
 ./run_gemini.sh --free-tier-confirmed
 ```
 
-Для локальных моделей открой окно Terminal в папке проекта и запусти Ollama.
+The runner skips prompts that already have saved responses.
+
+For Qwen and Gemma, start Ollama in one Terminal window:
 
 ```sh
 ./start_ollama_local.sh
 ```
 
-Оставь сервер открытым. После окончания текущего запуска модели в другом окне,
-в той же папке, выполни подготовку и сбор ответов Qwen и Gemma.
+Leave the server running. In another Terminal window, from the project directory, run the following after any active benchmark run has finished:
 
 ```sh
 ./prepare_local.sh
 ./run_local.sh
 ```
 
-Когда все три модели достигнут 830/830, выполни подсчёт заранее и открой таблицу.
+Once all three models reach **830/830 saved benchmark responses**, calculate and display the results:
 
 ```sh
 ./reproduce.sh
 ./demo.sh --results
 ```
 
-Подсчёт читает сохранённые ответы. QA accuracy показывает долю совпавших букв.
-chrF2 измеряет символьное совпадение перевода с эталоном. MT gap вычисляется
-как chrF2 перевода на казахский минус chrF2 перевода на английский.
-В scores.json находятся подробные метрики и интервалы. Holm в holm.json
-корректирует три парных сравнения QA. Отдельный sensitivity-анализ исключает
-70 совпадающих заданий pilot/test. После исключения остаются 180 пар MT,
-180 пар QA и 0 probes.
+## Explain the results
 
-Пока таблица моделей ожидает расчёта, пункт 4 показывает отдельные baseline.
-Always A даёт один и тот же вариант для всех QA. Seeded random выбирает букву
-с фиксированным seed. Dictionary MT использует подстановки из словаря.
-Эти строки служат точками сравнения для моделей.
+- **QA accuracy** is the proportion of answers that match the reference option.
+- **chrF2** measures character overlap between a translation and its reference.
+- **Translation gap** is chrF2 for translation into Kazakh minus chrF2 for translation into English.
+- **Paired QA comparisons** compare each model’s answers to the same items across the two languages. The Holm correction is applied across the three model comparisons.
 
-При необходимости отдельно выполни NLLB по README.md и ручную разметку по
-annotation/HOW_TO_ANNOTATE.md. В итоговой таблице они имеют собственный статус.
+While model results are pending, the demo displays simple baselines. **Always A** selects option A for every QA prompt. **Seeded random** selects an option using a fixed random seed. **Dictionary MT** translates through dictionary substitutions.
 
-## Короткое объяснение на английском
+Detailed scores are saved in `results/scores.json`. Corrected comparisons are saved in `results/holm.json`. The sensitivity analysis excludes the 70 items shared by the pilot and test sets, leaving 180 translation pairs, 180 QA pairs, and zero probes.
 
-We evaluate Gemini, Qwen and Gemma on Kazakh and English translation and
-question answering. The benchmark contains 430 items, which become 830 prompts
-per model. The runner stores each response with its model version, prompt ID
-and timestamp. The scoring step uses these logs to calculate QA accuracy, chrF2
-and paired comparisons. Here I can open one item and trace its score to the
-saved response. The progress screen shows which parts of the experiment are ready.
+NLLB and human error annotation are separate stages. See [README.md](README.md) for NLLB setup and [the annotation guide](annotation/HOW_TO_ANNOTATE.md) for the annotation procedure.
+
+## Suggested presentation script
+
+> We evaluate Gemini, Qwen, and Gemma on Kazakh and English translation and question answering, with additional language probes. The benchmark contains 430 items, which produce 830 prompts per model. The runner saves each response with its model version, prompt ID, and timestamp. The scoring step uses those records to calculate QA accuracy, chrF2, and paired comparisons. Here, I can open a benchmark item, show the original prompt and saved response, and explain how that response was scored.

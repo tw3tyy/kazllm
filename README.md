@@ -127,3 +127,22 @@ Run the automated checks with:
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+## Assignment 4 report
+
+Every number, table and figure in the Assignment 4 report is regenerated from the saved responses by the scripts in `assignment4/`:
+
+```sh
+python3 assignment4/analyze_partial.py . assignment4/results   # scores, CIs, tests, figures (~5 min, seed 42)
+python3 assignment4/label_errors.py assignment4                # error-analysis table + script check
+python3 assignment4/build_report.py assignment4                # writes the .docx report
+```
+
+| File | Contents |
+|---|---|
+| `assignment4/results/results.json` | Corpus chrF2/BLEU with 95% bootstrap CIs, Wilcoxon tests (Holm), subgroup, sensitivity, latency |
+| `assignment4/results/per_item_scores.csv` | Sentence-level scores for every analysed response |
+| `assignment4/results/fig*.png` | Report figures |
+| `assignment4/error_annotation.csv` | 30 lowest-scoring EN→KK outputs with provisional error labels |
+
+The analysis covers only the responses saved in `outputs/`. Re-run the three commands after new runs finish.
